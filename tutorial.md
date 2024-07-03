@@ -134,7 +134,6 @@ $$
 \frac{dv}{dt} &= 0.04 v^2 + 5 v + 140 - u + I \\
 \frac{du}{dt} &= a(bv - u)
 \end{align}
-    
 $$
 
 with the auxiliary after-spike resetting
