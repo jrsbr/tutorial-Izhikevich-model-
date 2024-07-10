@@ -1,0 +1,30 @@
+using ModelingToolkit
+using DifferentialEquations
+using Plots
+
+@variables t u(t)
+@parameters gL C I EL Vr Vth
+D = Differential(t)
+
+equation = D(u) ~ (-gL * (u - EL) + I) / C
+@named lif_system = ODESystem([equation])
+
+u0 = [u => -70.0]
+p = [gL => 1.0 , EL => -65.0 , C => 1.0 , Vth => -50.0 , I => 10.0 , Vr => -70.0]
+tspan = (0.0, 100.0)
+
+function callback_condition(u, t, integrator)
+  u[1] - integrator.p[4]
+end
+
+function callback_affect!(integrator)
+  integrator.u[1] = integrator.p[6]
+end
+
+spike_callback = ContinuousCallback(callback_condition , callback_affect!)
+
+problem = ODEProblem(lif_system, u0, tspan, p)
+solution = solve(problem, callback=spike_callback)
+
+gr()
+plot(solution, xlabel="Time", ylabel="Membrane Potential", title="LIF Neuron Model")
