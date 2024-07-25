@@ -74,36 +74,70 @@ You can try running the code above in your Julia terminal using your own data to
 
 ## Solving differential equations
 
-Another essential package we'll be using is DifferentialEquations, a library designed to solve various types of differential equations, such as ODEs, SDEs and PDEs.
+An essential package we'll be using is `DifferentialEquations.jl`, a library designed to solve various types of differential equations, such as ODEs, SDEs and PDEs.
 
-To use the DifferentialEquations library, we need to define a differential equation as a function, solve it and then plot it (we know how to do the last part).
+To use the `DifferentialEquations` library, we need to define a differential equation as a function, solve it and then plot it (we know how to do the last part).
 
-Let's solve the ODE $\frac{du}{dt}=-2u$  using this package. First we define a function to define the problem:
+Another useful library we'll be using is `ModelingToolkit.jl`, a Julia package designed to make our lives easiear when dealing with complex models and performing tasks such as model simplification, parameter estimation and code generation.
 
-```julia
-function f(du, u, p, t)
-    du .= -2 * u
-end
+Let's solve the ODE $\frac{du}{dt}=-a \cdot u$  using this package. First we need to define what are our variables and what are our parameters. For this, we'll use the `@variables`and `@parameters` macros from `ModelingToolkit`:
+
+```Julia
+# Install and import these packages
+using Pkg
+Pkg.add("ModelingToolkit")
+Pkg.add("DifferentialEquations")
+Using ModelingToolkit
+Using DifferentialEquations
+
+# Define the time variable
+@variables t
+
+# Define the time-dependent variable u
+@variables u(t)
+
+# Define the parameter a
+@parameters a
 ```
-Here the variable `du` is used to store the result of the differential equation, `u` is the current value of the solution, `p` is for parameters (not used in this simple example), and `t` is the current time.
 
-Then, we need to define the initial conditions of our ODE. We can do this simply by defining the variable `u0` and `tspan`:
+We also have to define our differential operator (it'll work as a function). We just need to declare it using the function `Differential(independent_variable)`:
 
 ```julia
-u0 = [1.0]          # Initial condition 
-tspan =(0.0, 5.0) # Time span from 0 to 5
+# Define the differential operator 
+D = Differential(t)
 ```
 
-Using our library, we can finally set up the problem and solve it using `ODEProblem` and `solve` functions:
+Finally, when using `ModelingToolkit`, the `~` symbol is used as the equal sign when writing an equation:
 
 ```julia
-using DifferentialEquations
+# Define the differential equation du/dt = -a * u
+equation = D(u) ~ -a * u
+```
 
-# Sets up the problem
-prob = ODEProblem(f, u0, tspan)
+Now, in order to build the ODE system, we use the `@named` macro to name the system and the `ODESystem` function:
 
-# Computes the ODE's solution
-sol = solve(prob)
+```julia
+# Build the ODE system and assign it a name
+@named system = ODESystem([equation])
+```
+
+We also have to define our system's initial conditions and parameter values. We use the following syntax:
+
+```julia
+# Define the initial conditions and parameters
+u0 = [u => 1.0]
+p = [a => 2.0]
+tspan = (0.0 , 5.0)
+```
+
+Finally, using the functions `ODEProblem` and `solve` from `DifferentialEquations` we convert our system to a numerical problem and solve it:
+
+```julia
+# Set up the problem
+problem = ODEProblem(system, u0, tspan, p)
+
+# Solve the problem
+solution = solve(problem)
 ```
 
 Finally, we can graph the solution using what we've already learned:
@@ -111,19 +145,8 @@ Finally, we can graph the solution using what we've already learned:
 ```julia
 using Plots
 
-plot(sol, xlabel="Time", ylabel="u(t)", title="Solution to du/dt=-2u")
+plot(solution, xlabel="Time", ylabel="u(t)", title="Solution to du/dt=-a*u")
 ```
-
-## The Leaky Integrate-and-Fire model
-
-The Leaky Integrate-and-Fire model is described by a single differential equation:
-
-$$
-\frac{du}{dt} = \frac{-gL \cdot (u - EL) + I}{C}.
-$$
-
-Our objetictive is to model this in Julia with the help of Neuroblox.
-
 
 ## The Izhikevich model
 
@@ -143,3 +166,64 @@ $$
 \text{if }v \geq 30\text{ mV, then }\begin{cases}v\leftarrow c \\ u\leftarrow u + d.\end{cases}
 \end{align}
 $$
+
+In order to create this model in Julia, we first need to create an ODE using what we've already learned:
+
+```julia 
+using ModelingToolkit
+using DifferentialEquations
+
+@variables t v(t) u(t)
+@parameters a b c d I
+D = Differential(t)
+
+equation = [D(v) ~ 0.04 * v ^ 2 + 5 * v + 140 - u + I
+           D(u) ~ a * (b * v - u)]
+```
+
+Now, we need to create the event that generates the spikes. For this, we create a function continuous event to represent the discontinuity in our functions. Those should be written in the following format:
+
+```julia
+name_of_event = [[event_1] => [effect_1]
+                [event_2] => [effect_2]
+                ...
+                [event_n] => [effect_n]]
+```
+
+In our case, it'll be:
+
+```julia
+event = [[v ~ 30.0] => [u ~ u + d]
+        [v ~ 30.0] => [v ~ c]]
+```
+
+and now, using the `ODESystem` function, we'll create our system of ODE's. We need to declare our independent variable, dependent variables and parameters when creating this system, and if it exists (in this case, it does exist), we also need to declare our events:
+
+```julia
+@named izh_system = ODESystem(equation, t, [v, u], [a, b, c, d, I]; continuous_events = event)
+```
+ Finally, we define our parameters and solve our system:
+
+ ```julia
+ # Those below can change; I'm using the parameters for a chattering dynamic
+p = [a =>  0.02, b => 0.2, c => -50.0, d => 2.0, I => 10.0]
+
+u0 = [v => -65.0, u => -13.0]
+
+tspan = (0.0, 100.0)
+
+izh_prob = ODEProblem(izh_system, u0, tspan, p)
+izh_sol = solve(izh_prob)
+ ```
+
+Now that our problem is solved, we just have to plot it:
+
+```julia
+using Plots
+gr()
+
+# The "vars" below is used to only plot the "v" variable
+plot(sol, vars = [v], xlabel="Time (ms)", ylabel="Membrane Potential (mV)", title="Izhikevich Neuron Model")
+```
+
+We're done! You've just plotted a single neuron model.
