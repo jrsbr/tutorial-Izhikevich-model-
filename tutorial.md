@@ -222,7 +222,7 @@ Now that our problem is solved, we just have to plot it:
 using Plots
 gr()
 
-# The "vars" below is used to only plot the "v" variable
+# The "vars" below is used to plot only the "v" variable
 plot(sol, vars = [v], xlabel="Time (ms)", ylabel="Membrane Potential (mV)", title="Izhikevich Neuron Model")
 ```
 
