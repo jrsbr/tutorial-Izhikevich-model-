@@ -162,3 +162,5 @@ axislegend(ax)
 
 display(fig)
 ```
+
+Great! You just learned how to model your own ODE in Julia!
