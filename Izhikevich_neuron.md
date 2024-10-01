@@ -56,7 +56,7 @@ and now, using the `ODESystem` function, we'll create our system of ODE's. We ne
  Finally, we define our parameters and solve our system:
 
  ```@example beginner_tutorial
- # Those below can change; I'm using the parameters for a chattering dynamic
+# Those below can change; I'm using the parameters for a chattering dynamic
 p = [a =>  0.02, b => 0.2, c => -50.0, d => 2.0, I => 10.0]
 
 u0 = [v => -65.0, u => -13.0]

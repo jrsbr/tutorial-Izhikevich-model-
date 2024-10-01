@@ -83,12 +83,23 @@ simplified_sys = structural_simplify(sys)
 Now the `simplified_sys` system should be a regular ODE system, which we know how to solve:
 
 ```
-using DifferentialEquations, Plots
+using DifferentialEquations, CairoMakie
 
 tspan = (0.0, 100.0)
 
 prob = ODEProblem(simplified_sys, [], tspan)
 sol = solve(prob)
-plot(sol)
+
+times = sol.t
+values = sol[1, :]
+
+fig, ax, plt = lines(times, values, color=:black, label="M.P (mV)")
+
+ax.xlabel = "Time (ms)"
+ax.ylabel = "Membrane Potential (mV)"
+ax.title = "Izhikevich Neuron Model"
+axislegend(ax)
+
+display(fig)
 ```
 and here it is. You've just modelled a two neuron system!
